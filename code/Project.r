@@ -80,3 +80,26 @@ knn.pred = rep(0,n)
 knn.pred[probs>.5]=1
 mean(knn.pred == train_data$disc_hire)
 test_roc = roc(train_data$disc_hire ~probs, plot = TRUE, print.auc = TRUE) # 0.90
+
+## SVM with radial kernel
+
+library(e1071)
+set.seed(1)
+train_dataSVM = train_data
+train_dataSVM$disc_hire = as.factor(train_data$disc_hire)
+tune.out <- tune(svm , disc_hire ~ ., data = train_dataSVM,
+                 kernel = "radial",
+                 ranges = list(
+                   cost = c(0.1 , 1, 10, 100, 1000) ,
+                   gamma = c(0.5, 1, 2, 3, 4),
+                   probability = TRUE
+                 )
+)
+summary(tune.out)
+
+svm.probs = predict(tune.out$best.model , train_dataSVM, probability = TRUE)
+svm.probs=as.vector(attr(svm.probs, "probabilities")[, 1])
+svm.pred = rep(0,n)
+svm.pred[svm.probs > .5] = 1
+mean(svm.pred == train_data$disc_hire)
+test_roc = roc(train_data$disc_hire ~ svm.pred, plot = TRUE, print.auc = TRUE) # 0.922
