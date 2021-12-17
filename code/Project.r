@@ -63,6 +63,7 @@ test_roc = roc(train_data$disc_hire ~ as.vector(lasso.probs), plot = TRUE, print
 ## KNN
 
 library(caret)
+set.seed(1)
 trControl <- trainControl(method  = "cv",
                           number  = 10)
 fit <- train(as.factor(disc_hire) ~ .,
@@ -70,7 +71,12 @@ fit <- train(as.factor(disc_hire) ~ .,
              tuneGrid   = expand.grid(k = 1:10),
              trControl  = trControl,
              metric     = "Accuracy",
-             data       = train_data) # 7
+             data       = train_data) # 8
 
-knnPredict <- predict(fit,newdata = train_data[, 2:18] )
+knnPredict <- predict(fit,newdata = train_data[, 2:18], type = "prob")
+probs = as.vector(knnPredict[, 2])
 mean(knnPredict == train_data$disc_hire) # 0.852264
+knn.pred = rep(0,n)
+knn.pred[probs>.5]=1
+mean(knn.pred == train_data$disc_hire)
+test_roc = roc(train_data$disc_hire ~probs, plot = TRUE, print.auc = TRUE) # 0.90
