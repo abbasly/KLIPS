@@ -103,3 +103,26 @@ svm.pred = rep(0,n)
 svm.pred[svm.probs > .5] = 1
 mean(svm.pred == train_data$disc_hire)
 test_roc = roc(train_data$disc_hire ~ svm.pred, plot = TRUE, print.auc = TRUE) # 0.922
+
+## Single - layer Neural Network
+
+library(keras)
+set.seed(1)
+x= scale(model.matrix(disc_hire ~ . -1, data = train_data))
+modnn <- keras_model_sequential () %>%
+   layer_dense(units = 50, activation = "relu",
+                input_shape = ncol(x)) %>%
+   layer_dropout(rate = 0.4) %>%
+   layer_dense(units = 1, activation = "sigmoid")
+modnn %>% compile(
+  loss = 'binary_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+history <- modnn %>% fit(
+  x, train_data$disc_hire, epochs = 600, batch_size = 32)
+nn.pred = rep(0,n)
+nn.pred[npred>0.5]=1
+mean(nn.pred == train_data$disc_hire)
+test_roc = roc(train_data$disc_hire ~ npred, plot = TRUE, print.auc = TRUE) # 0.930
+
