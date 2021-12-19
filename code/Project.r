@@ -3,7 +3,9 @@ test_data = data[is.na(data$disc_hire),]
 test_data_y = test_data[, 1 , drop = FALSE]
 train_data = data[!is.na(data$disc_hire),]
 train_data_y = train_data[, 1 , drop = FALSE]
-View(test_data)
+n=dim(train_data)[1]
+m=dim(test_data)[1]
+#View(test_data)
 
 
 ## Logistic Regression
@@ -13,35 +15,46 @@ glm.fits <- glm(
   disc_hire ~ . ,
   data = train_data , family = binomial
 )
-n=dim(train_data)[1]
-m=dim(test_data)[1]
-glm.probs <- predict(glm.fits , type = "response")
-glm.pred <- rep(0, n)
-glm.pred[glm.probs > 0.5] = 1
-mean(glm.pred == train_data$disc_hire)
+summary(glm.fits)
 
-glm.probs1 <- predict(glm.fits , newdata = test_data, type = "response")
-glm.pred1 <- rep(0, m)
-glm.pred1[glm.probs1 > .5] = 1
-glm
+glm.probs.train <- predict(glm.fits , type = "response")
+glm.pred.train <- rep(0, n)
+glm.pred.train[glm.probs.train > 0.5] = 1
+mean(glm.pred.train == train_data$disc_hire) # 0.891923
+
+glm.probs.test <- predict(glm.fits , newdata = test_data, type = "response")
+glm.pred.test <- rep(0, m)
+glm.pred.test[glm.probs.test > .5] = 1
+summary(glm.fits)
 
 library(pROC)
-test_roc = roc(train_data$disc_hire ~ glm.probs, plot = TRUE, print.auc = TRUE) # 0.878
+test_roc = roc(train_data$disc_hire ~ glm.probs.train, plot = TRUE, print.auc = TRUE) # 0.878
+table(glm.pred.test, test_data$gender)
+
+
 
 
 ## Random Forests
 
 set.seed(1)
+library(caret)
 library(randomForest)
 train_dataRF = train_data
 train_dataRF$disc_hire = as.factor(train_data$disc_hire)
-bag.data <- randomForest(disc_hire ~ ., data = train_dataRF, importance = TRUE, proximity=T)
-yhat.bag <- predict(bag.data , newdata = train_data, type = "prob")
+fitControl = trainControl(method ="cv",
+                          number = 10,
+                          search = "random", savePredictions = T)
+model = train(disc_hire ~ ., data = train_dataRF, method = "rf",
+              trControl = fitControl, tuneLength = 10,
+              ntree = 500)
+model$bestTune #2
+yhat.bag <- predict(model , newdata = train_data, type = "prob")
 forest.pred <- rep(0, n)
 probs = as.vector(yhat.bag[, 2])
 forest.pred[probs > .5] = 1
 mean(forest.pred == train_data$disc_hire)
-test_roc = roc(train_data$disc_hire ~ probs, plot = TRUE, print.auc = TRUE) # 0.984
+test_roc = roc(train_data$disc_hire ~ probs, plot = TRUE, print.auc = TRUE) # 0.983
+summary(model)
 
 ## Logistic Regression with Lasso Regularization
 
@@ -62,7 +75,7 @@ test_roc = roc(train_data$disc_hire ~ as.vector(lasso.probs), plot = TRUE, print
 
 ## KNN
 
-library(caret)
+
 set.seed(1)
 trControl <- trainControl(method  = "cv",
                           number  = 10)
