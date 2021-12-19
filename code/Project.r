@@ -47,14 +47,26 @@ fitControl = trainControl(method ="cv",
 model = train(disc_hire ~ ., data = train_dataRF, method = "rf",
               trControl = fitControl, tuneLength = 10,
               ntree = 500)
-model$bestTune #2
+print(model)
+model$bestTune
 yhat.bag <- predict(model , newdata = train_data, type = "prob")
 forest.pred <- rep(0, n)
 probs = as.vector(yhat.bag[, 2])
 forest.pred[probs > .5] = 1
 mean(forest.pred == train_data$disc_hire)
 test_roc = roc(train_data$disc_hire ~ probs, plot = TRUE, print.auc = TRUE) # 0.983
-summary(model)
+threshold = coords(test_roc, "best", ret = "threshold") # 0.119
+
+ ## Predicting on the test data
+
+yhat.bag <- predict(model , newdata = test_data, type = "prob")
+forest.pred <- rep(0, m)
+probs = as.vector(yhat.bag[, 2])
+forest.pred[probs > as.numeric(threshold)] = 1
+table(forest.pred, test_data$gender)
+
+table(train_data$disc_hire, train_data$health)
+table(forest.pred, test_data$health)
 
 ## Logistic Regression with Lasso Regularization
 
@@ -85,6 +97,7 @@ fit <- train(as.factor(disc_hire) ~ .,
              trControl  = trControl,
              metric     = "Accuracy",
              data       = train_data) # 8
+print(fit)
 
 knnPredict <- predict(fit,newdata = train_data[, 2:18], type = "prob")
 probs = as.vector(knnPredict[, 2])
@@ -108,14 +121,14 @@ tune.out <- tune(svm , disc_hire ~ ., data = train_dataSVM,
                    probability = TRUE
                  )
 )
-summary(tune.out)
+print(tune.out)
 
 svm.probs = predict(tune.out$best.model , train_dataSVM, probability = TRUE)
 svm.probs=as.vector(attr(svm.probs, "probabilities")[, 1])
 svm.pred = rep(0,n)
 svm.pred[svm.probs > .5] = 1
 mean(svm.pred == train_data$disc_hire)
-test_roc = roc(train_data$disc_hire ~ svm.pred, plot = TRUE, print.auc = TRUE) # 0.922
+test_roc = roc(train_data$disc_hire ~ svm.probs, plot = TRUE, print.auc = TRUE) # 0.976
 
 ## Single - layer Neural Network
 
@@ -139,11 +152,8 @@ npred <- predict(modnn , x)
 nn.pred = rep(0,n)
 nn.pred[npred>0.5]=1
 mean(nn.pred == train_data$disc_hire)
-test_roc = roc(train_data$disc_hire ~ npred, plot = TRUE, print.auc = TRUE) # 0.930
+test_roc = roc(train_data$disc_hire ~ npred, plot = TRUE, print.auc = TRUE) # 0.937
+coords(test_roc, "best", ret = "threshold")
+print(modnn)
 
 
-npred = predict(modnn, x_test)
-nn.pred = rep(0,m)
-nn.pred[npred>0.5]=1
-View(nn.pred)
-table(nn.pred, test_data$gender)
